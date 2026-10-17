@@ -533,6 +533,14 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
             if ($.frame.PN === 80 || $.frame.PN === 81) { // after jump attack
               $.statemem.attlock = 2
             }
+            // Knight and Julian have no dash frames: their 213/214 are plain jump frames,
+            // but a running jump still launches them like a dash (as in LF2)
+            if (($.frame.N === 213 || $.frame.N === 214) && $.ps.y === 0 &&
+              (($.frame.PN >= 9 && $.frame.PN <= 11) || $.frame.PN === 215)) {
+              $.ps.vx = $.dirh() * ($.data.bmp.dash_distance - 1) * ($.frame.N === 213 ? 1 : -1)
+              $.ps.vz = $.dirv() * ($.data.bmp.dash_distancez - 1)
+              $.ps.vy = $.data.bmp.dash_height
+            }
             break
 
           case 'TU':
@@ -1162,7 +1170,10 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
             break
           }
           case 'combo':
-            return 1 // keep drinking until the bottle is empty
+            if (K === 'def') { // defend stops drinking; the rest stays in the bottle
+              $.trans.frame(999, 10)
+            }
+            return 1 // otherwise keep drinking until the bottle is empty
         }
       },
 

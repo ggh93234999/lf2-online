@@ -101,6 +101,8 @@ async function startGame(room) {
       clearTimeout(room.endTimer);
       room.endTimer = setTimeout(() => endGame(room), 12000);
     },
+    // a player pressed attack/jump on the result screen: back to the lobby now
+    onContinue: () => { if (room.runner === runner) endGame(room); },
   };
   const runner = s.mode === 'stage' && E.stages.length
     ? new StageRunner(E, { players, stageIndex: s.stage }, hooks)

@@ -34,6 +34,13 @@ class MatchRunner {
       return pl;
     });
     this.setup = { control: null, player: players, background: { id: opts.background }, set: { weapon: opts.weapons !== false } };
+    // After the result shows, F.LF ends the match when attack/jump is pressed (F4).
+    // On the server that would freeze everyone's screen, so hand it to the room instead.
+    this.match.F4 = () => {
+      if (this.continued) return;
+      this.continued = true;
+      if (hooks.onContinue) setImmediate(hooks.onContinue);
+    };
     this.extra = opts.extra || null;
   }
 
