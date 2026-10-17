@@ -262,6 +262,10 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
               case 'att':
                 if ($.hold.obj) {
                   var dx = $.con.state.left !== $.con.state.right
+                  if (!dx && $.proper($.hold.obj.id, 'drink') && $.data.frame[55]) {
+                    $.trans.frame(55, 10) // drink milk / beer
+                    return 1
+                  }
                   if ($.hold.obj.type === 'heavyweapon') {
                     $.trans.frame(50, 10) // throw heavy weapon
                     return 1
@@ -1088,6 +1092,44 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
               }
             }
             break
+        }
+      },
+
+      17: function (event, K) // weapon_drink (not in the original F.LF)
+      {
+        const $ = this
+        switch (event) {
+          case 'TU': {
+            const w = $.hold.obj
+            const d = w && $.proper(w.id, 'drink')
+            if (!d) { // lost the bottle
+              $.trans.frame(999, 10)
+              break
+            }
+            if (!w.drink_left) w.drink_left = { hp: d.hp, mp: d.mp }
+            const L = w.drink_left
+            if ($.match.time.t % 2 === 0) {
+              if (L.hp > 0) {
+                const a = Math.min(d.hp_rate || 2, L.hp)
+                L.hp -= a
+                $.health.hp = Math.min($.health.hp_full, $.health.hp + a)
+                $.health.hp_bound = Math.max($.health.hp_bound, $.health.hp)
+              }
+              if (L.mp > 0) {
+                const a = Math.min(d.mp_rate || 4, L.mp)
+                L.mp -= a
+                $.health.mp = Math.min($.health.mp_full, $.health.mp + a)
+              }
+            }
+            if (L.hp <= 0 && L.mp <= 0) { // empty: the bottle breaks
+              $.drop_weapon(0, 0)
+              w.health.hp = 0
+              $.trans.frame(999, 10)
+            }
+            break
+          }
+          case 'combo':
+            return 1 // keep drinking until the bottle is empty
         }
       },
 

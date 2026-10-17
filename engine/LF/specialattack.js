@@ -28,6 +28,9 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
             if ($.frame.D.opoint) {
               $.match.create_object($.frame.D.opoint, $)
             }
+            if (SPAWNERS[$.frame.D.hit_Fa]) {
+              SPAWNERS[$.frame.D.hit_Fa].call($)
+            }
             if ($.frame.D.sound) {
               $.match.sound.play($.frame.D.sound)
             }
@@ -76,6 +79,8 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
               $.frame.D.hit_Fa === 2) {
               if ($.health.hp > 0) {
                 $.chase_target()
+              }
+              if ($.health.hp > 0 && $.chasing.target) {
                 const T = $.chasing.target
                 const dx = T.ps.x - $.ps.x
                 const dy = T.ps.y - $.ps.y
@@ -93,6 +98,9 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
             if ($.frame.D.hit_Fa === 10) {
               $.ps.vx = ($.ps.vx > 0 ? 1 : -1) * 17
               $.ps.vz = 0
+            }
+            if (HOMING[$.frame.D.hit_Fa]) {
+              $.homing($.frame.D.hit_Fa)
             }
             break
         }
@@ -271,6 +279,130 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
       }
     }
 
+    /*  Homing objects of the bosses and Jan (not in the original F.LF).
+        In LF2 a "start" frame carrying one of these hit_Fa values summons
+        homing objects, which then fly with another hit_Fa value:
+          5 -> 4   Jan's angels: home in on teammates and heal them
+          6 -> 7   Jan's devils: home in on enemies
+          8 -> 12  Bat's bats
+          13 -> 14 Julian's skulls
+          9        Firzen's disaster: fire/ice balls rain from the sky (7)
+          11       Firzen's volcano: fire/ice balls burst upwards
+        Counts and speeds are approximations of the original. */
+    const HOMING = { 4: 'friend', 7: 'enemy', 12: 'enemy', 14: 'enemy' }
+    const SPAWNERS = {
+      5: function () { this.summon('friend', 4) },
+      6: function () { this.summon('enemy', 4) },
+      8: function () { this.summon('enemy', 4) },
+      13: function () { this.summon('enemy', 1) },
+      9: function () { // disaster
+        const $ = this
+        const foes = $.living('enemy')
+        const bg = $.match.background
+        for (let i = 0; i < 14; i++) {
+          const tgt = foes.length ? foes[i % foes.length] : null
+          const x = tgt ? tgt.ps.x + ($.match.random() - 0.5) * 220 : bg.camerax + $.match.random() * 794
+          const z = tgt ? tgt.ps.z : $.ps.z
+          $.spawn_at(i % 2 ? 222 : 221, x, -320 - i * 55, z, { vy: 7, target: tgt })
+        }
+      },
+      11: function () { // volcano
+        const $ = this
+        for (let i = 0; i < 10; i++) {
+          const a = i / 10 * Math.PI * 2
+          $.spawn_at(i % 2 ? 222 : 221, $.ps.x + Math.cos(a) * 120, -10, $.ps.z + Math.sin(a) * 30, { vy: -13, vx: Math.cos(a) * 2, free: true })
+        }
+      }
+    }
+
+    // living characters on my side ('friend') or the other side ('enemy')
+    function living(kind) {
+      const $ = this
+      const out = []
+      for (const i in $.match.character) {
+        const c = $.match.character[i]
+        if (c.health.hp <= 0) continue
+        if ((c.team === $.team) === (kind === 'friend')) out.push(c)
+      }
+      return out
+    }
+
+    // create a homing copy of this object for each target (at most `max` per target kind)
+    function summon(kind, max) {
+      const $ = this
+      let targets = $.living(kind)
+      targets.sort(function (a, b) { return Math.abs(a.ps.x - $.ps.x) - Math.abs(b.ps.x - $.ps.x) })
+      targets = targets.slice(0, max)
+      if (!targets.length) targets = [null]
+      for (let i = 0; i < targets.length; i++) {
+        $.spawn_at($.id, $.ps.x, $.ps.y, $.ps.z + (i - (targets.length - 1) / 2) * 8, { vx: $.dirh() * 6, vy: -2, target: targets[i] })
+      }
+    }
+
+    function spawn_at(oid, x, y, z, opt) {
+      const $ = this
+      const parent = $.parent || $
+      $.match.tasks.push({
+        task: 'create_object',
+        parent: parent,
+        opoint: { kind: 1, x: 0, y: 0, action: 1, dvx: 0, dvy: 0, oid: oid, facing: 0 },
+        team: $.team,
+        pos: { x: x, y: y },
+        z: z,
+        dir: $.ps.dir,
+        dvz: 0,
+        setup: function (obj) {
+          obj.ps.vx = opt.vx || 0
+          obj.ps.vy = opt.vy || 0
+          obj.homing_target = opt.target || null
+          obj.homing_free = !!opt.free
+        }
+      })
+    }
+
+    function homing(code) {
+      const $ = this
+      const ps = $.ps
+      if (!ps) return
+      const kind = HOMING[code]
+      // Firzen's balls burst on the ground
+      if (code === 7 && ps.y >= 0 && ps.vy >= 0 && $.data.frame[60] && $.state() === 3000) {
+        ps.y = 0; ps.vx = 0; ps.vy = 0; ps.vz = 0
+        $.trans.frame(60)
+        return
+      }
+      if ($.homing_free || $.health.hp <= 0) return // out of homing power: fly straight on
+      let T = $.homing_target
+      if (!T || T.health.hp <= 0 || !$.match.character[T.uid]) {
+        const list = $.living(kind)
+        T = null
+        let best = Infinity
+        for (let i = 0; i < list.length; i++) {
+          const d = Math.abs(list[i].ps.x - ps.x) + Math.abs(list[i].ps.z - ps.z)
+          if (d < best) { best = d; T = list[i] }
+        }
+        $.homing_target = T
+      }
+      if (!T) return
+      const dx = T.ps.x - ps.x
+      const dz = T.ps.z - ps.z
+      const dy = (T.ps.y - 35) - ps.y
+      const step = function (v, d, acc, max) {
+        v += (d >= 0 ? 1 : -1) * acc
+        return Math.max(-max, Math.min(max, v))
+      }
+      ps.vx = step(ps.vx, dx, 0.7, 12)
+      ps.vz = step(ps.vz, dz, 0.4, 2.5)
+      if (code !== 7 || ps.y < -40) ps.vy = step(ps.vy, dy, 0.6, code === 7 ? 9 : 6)
+      $.switch_dir(ps.vx >= 0 ? 'right' : 'left')
+      // Jan's angel heals the teammate it reaches
+      if (kind === 'friend' && Math.abs(dx) < 25 && Math.abs(dz) < 15 && Math.abs(dy) < 50) {
+        T.heal(100)
+        $.homing_free = true
+        $.trans.frame(1000, 30) // vanish (outranks the 'die' transition)
+      }
+    }
+
     // inherit livingobject
     function specialattack(config, data, thisID) {
       const $ = this
@@ -289,6 +421,10 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
     specialattack.prototype.constructor = specialattack
     specialattack.prototype.states = states
     specialattack.prototype.type = 'specialattack'
+    specialattack.prototype.living = living
+    specialattack.prototype.summon = summon
+    specialattack.prototype.spawn_at = spawn_at
+    specialattack.prototype.homing = homing
 
     specialattack.prototype.init = function (config) {
       const pos = config.pos
@@ -426,6 +562,7 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
       const targets = $.match.scene.query(null, $, $.chasing.query)
       const target = targets[0]
       $.chasing.target = target
+      if (!target) return
 
       if ($.chasing.chased[target.uid] === undefined) {
         $.chasing.chased[target.uid] = 1

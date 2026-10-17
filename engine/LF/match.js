@@ -303,7 +303,7 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
         case 'create_object':
           if (T.opoint.oid) {
             const OBJ = util.select_from($.data.object, { id: T.opoint.oid })
-            if (!OBJ) {
+            if (!OBJ || !OBJ.data || OBJ.data === 'lazy') {
               console.error('Object', T.opoint.oid, 'not exists')
               break
             }
@@ -314,6 +314,7 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
             }
             var obj = new factory[OBJ.type](config, OBJ.data, T.opoint.oid)
             obj.init(T)
+            if (T.setup) T.setup(obj) // e.g. homing objects summoned by a special attack
             var uid = $.scene.add(obj)
             $[obj.type][uid] = obj
           }

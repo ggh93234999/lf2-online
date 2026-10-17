@@ -92,11 +92,14 @@ function addOpointDependencies(pack) {
   };
   for (const ch of objects.filter(o => o.type === 'character')) {
     const pack = new Map((ch.pack || []).map(o => [o.id, o]));
-    const queue = [ch];
+    // start from everything already in the pack: their own spawns count too
+    const queue = [ch, ...pack.values()];
+    const seen = new Set(queue.map(o => o.id));
     while (queue.length) {
       for (const id of oidsOf(queue.shift())) {
         const dep = byId.get(id);
-        if (!dep || dep === ch || pack.has(id)) continue;
+        if (!dep || seen.has(id)) continue;
+        seen.add(id);
         if (dep.type === 'character') continue; // transformations are created on demand
         pack.set(id, dep);
         queue.push(dep);
@@ -104,6 +107,19 @@ function addOpointDependencies(pack) {
     }
     ch.pack = [...pack.values()];
   }
+}
+
+// How the imported items behave when held (F.LF's data/properties.js only covers its own items).
+// Drink amounts are approximations of the original.
+function addItemProperties(pack) {
+  const spec = pack.data.properties.data;
+  const throwable = { mass: 0.3, run_throw: true, jump_throw: true, dash_throw: false, stand_throw: false, just_throw: false };
+  const add = (id, props) => { if (!spec[id]) spec[id] = Object.assign({}, throwable, props); };
+  add(120, { attackable: true });                        // knife
+  add(121, { just_throw: true });                        // baseball
+  add(122, { drink: { hp: 100, mp: 100, hp_rate: 2, mp_rate: 2 } }); // milk
+  add(123, { drink: { hp: 0, mp: 200, mp_rate: 4 } });   // beer
+  add(124, { attackable: true, stand_throw: true });     // boomerang
 }
 
 let loaded = null;
@@ -115,6 +131,7 @@ function load() {
         Fsprite.basePath = PACK_DIR;
         util.div = () => undefined; // no DOM on the server
         addExtraObjects(pack).then(() => {
+          addItemProperties(pack);
           util.organize_package(pack);
           addOpointDependencies(pack);
           resolve({ Fsprite, Match, Global, util, pack, stages: readJSON('stage.json') || [] });

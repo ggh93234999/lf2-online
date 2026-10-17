@@ -75,7 +75,9 @@ npm run import-lf2 -- "C:\Games\LF2"     # 資料夾裡要有 data\ 和 sprite\
 
 ## 目前的限制
 
-- 只有角色、武器和招式球；**牛奶和啤酒只能撿起來丟，不能喝**；關卡裡的囚犯（criminal）沒有實作。
+- 牛奶和啤酒：拿著按攻擊就會喝，牛奶回 HP 和 MP、啤酒回 MP，喝完瓶子會破掉（回復量是近似原版的數值）。
+- Julian 的骷髏、Firzen 的天災／火山、Jan 的天使／惡魔、Bat 的蝙蝠這類「召喚追蹤物」是自己補做的，數量和速度是近似原版。
+- 關卡裡的囚犯（criminal）沒有實作。
 - 沒有生存模式（Survival）：找到的 stage.dat 裡的生存關是別人改過的版本，不是原版。
 - 原版背景音樂沒有放進來（只有音效）。
 - 新匯入的角色有少數動作在 F.LF 引擎裡可能和原版不完全一樣。
@@ -97,7 +99,9 @@ npm run import-lf2 -- "C:\Games\LF2"     # 資料夾裡要有 data\ 和 sprite\
 
 - `LF/background.js`、`LF/mechanics.js`：闖關模式的鏡頭跟隨和可走範圍
 - `LF/character.js`：幾個在原版資料下會當掉的地方加上保護（沒有 super punch 的角色、被非角色抓住、沒有攻擊者的倒地、丟人時下一格沒有 cpoint）
-- `LF/match.js`：AI 腳本出錯時不會讓整場停掉
+- `LF/match.js`：AI 腳本出錯時不會讓整場停掉；資料還沒載入的物件不會讓遊戲當掉
+- `LF/specialattack.js`：補上 hit_Fa 4～14 的召喚與追蹤行為（Julian、Firzen、Jan、Bat 的招式）
+- `LF/character.js`：補上喝牛奶／啤酒（state 17）
 
 ## 授權
 
