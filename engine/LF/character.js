@@ -1163,8 +1163,9 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
             sip('hp', function (a) { H.hp = Math.min(H.hp_full, H.hp + a); H.hp_bound = Math.max(H.hp_bound, H.hp) })
             sip('hp_bound', function (a) { H.hp_bound = Math.min(H.hp_full, H.hp_bound + a) })
             sip('mp', function (a) { H.mp = Math.min(H.mp_full, H.mp + a) })
-            if (drink_empty(d, used)) { // empty: toss the bottle away
-              $.drop_weapon(($.match.random() - 0.5) * 6, -6)
+            if (drink_empty(d, used)) { // empty: the bottle shatters (as in LF2)
+              $.drop_weapon(0, 0)
+              w.health.hp = 0
               $.trans.frame(999, 10)
             }
             break
