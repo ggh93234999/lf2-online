@@ -141,6 +141,10 @@
 
   // ------------------------------------------------------------------ input
   const KEYMAP = {
+    // numeric keypad (main layout)
+    Numpad8: 'up', Numpad2: 'down', Numpad4: 'left', Numpad6: 'right',
+    Numpad5: 'att', Numpad0: 'jump', NumpadAdd: 'def',
+    // keyboards without a keypad
     KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
     KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
     KeyJ: 'att', KeyZ: 'att', KeyK: 'jump', KeyX: 'jump', KeyL: 'def', KeyC: 'def',
