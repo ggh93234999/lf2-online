@@ -10,6 +10,12 @@ const PLAYER_TEAM = 1, ENEMY_TEAM = 2;
 const SCREEN_W = 794;
 const REVIVE_HP = 200;
 
+// Prisoners (criminal.dat, id 300): `act` picks who the prisoner is; a hit
+// from the players' side frees him and he fights on their team. `reserve`
+// is treated as the number of times he comes back after being beaten.
+const PRISONER = 300;
+const PRISONER_CHAR = { 0: 35, 10: 32, 20: 33, 30: 34, 40: 30, 50: 31, 60: 36 }; // monk, mark, jack, sorcerer, bandit, hunter, jan
+
 const stageName = id => `${Math.floor(id / 10) + 1}-${(id % 10) + 1}`;
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -65,6 +71,7 @@ class StageRunner {
       for (const s of ph.spawns) {
         if (s.id === 1000) HEROES.forEach(h => ids.add(h));
         else if (s.id === 3000) SOLDIERS.forEach(h => ids.add(h));
+        else if (s.id === PRISONER) ids.add(PRISONER_CHAR[Math.floor((s.act || 40) / 10) * 10] || 30);
         else if (s.id < 100) ids.add(s.id);
       }
     }
@@ -94,6 +101,8 @@ class StageRunner {
     this.t = 0;
     this.phaseIndex = -1;
     this.entries = [];
+    this.prisoners = [];
+    this.after2 = [];
     this.waitUntil = 0;
     this.after = null;
     this.nextPhase();
@@ -110,7 +119,8 @@ class StageRunner {
     this.entries = [];
     for (const s of ph.spawns) {
       if (s.id >= 100 && s.id < 200) { this.dropItem(s); continue; }
-      if (s.id >= 200 && s.id !== 1000 && s.id !== 3000) continue; // criminal etc. are not simulated
+      if (s.id === PRISONER) { this.spawnPrisoner(s); continue; }
+      if (s.id >= 200 && s.id !== 1000 && s.id !== 3000) continue;
       const count = s.ratio !== undefined ? Math.floor(Math.round(s.ratio * n * 1e6) / 1e6) : 1;
       for (let k = 0; k < count; k++) {
         // soldiers without a count come back up to 50 times while a boss lives
@@ -118,6 +128,71 @@ class StageRunner {
       }
     }
     this.hadBoss = this.entries.some(e => e.s.boss);
+  }
+
+  spawnPrisoner(s) {
+    const m = this.runner.match;
+    const bg = m.background;
+    const id = PRISONER_CHAR[Math.floor((s.act || 40) / 10) * 10] || 30;
+    if (!m.data.object.some(o => o.id === id && o.data && o.data !== 'lazy')) return;
+    const x = Math.max(10, Math.min(bg.width - 10, (s.x || bg.camerax + 600) + rand(-40, 40)));
+    const z = rand(bg.zboundary[0], bg.zboundary[1]);
+    const before = new Set(Object.keys(m.character));
+    const aiBefore = m.AIscript.length;
+    m.create_characters([{ name: '', controller: { type: 'AIscript', id: this.aiId }, id, team: ENEMY_TEAM, pos: { x, y: 0, z },
+      spec: { dir: 'left', health: { hp: s.hp || 100, hp_bound: s.hp || 100 } } }], { pane: false });
+    const uid = Object.keys(m.character).find(k => !before.has(k));
+    if (!uid) return;
+    const ai = m.AIscript.splice(aiBefore); // a prisoner just stands there until freed
+    const ch = m.character[uid];
+    ch.prisoner = true;
+    this.prisoners.push({ s, id, uid, ch, ai, freed: false, reserve: s.reserve || 0, deadAt: 0 });
+  }
+
+  // prisoners hit by the players' side join them; beaten allies come back while they have reserve
+  updatePrisoners() {
+    const m = this.runner.match;
+    for (const p of this.prisoners) {
+      if (!p.ch) continue;
+      if (!p.freed) {
+        const att = p.ch.itr.attacker;
+        if (att && att.team === PLAYER_TEAM) {
+          p.freed = true;
+          p.ch.team = PLAYER_TEAM;
+          p.ch.prisoner = false;
+          p.ch.stage_entered = true;
+          p.ch.health.hp = Math.max(p.ch.health.hp, p.s.hp || 100);
+          m.AIscript.push(...p.ai);
+          m.sound.play('1/m_join');
+        }
+        continue;
+      }
+      if (p.ch.health.hp > 0) continue;
+      if (!p.deadAt) p.deadAt = this.t;
+      if (this.t - p.deadAt < 75 || p.removing) continue;
+      p.removing = true;
+      m.AIscript = m.AIscript.filter(a => !p.ai.includes(a));
+      p.ch.sp.hide(); p.ch.shadow.hide();
+      m.destroy_object(p.ch);
+      if (p.reserve > 0) this.after2 = (this.after2 || []).concat([{ at: this.t + 60, p }]);
+      p.ch = null;
+    }
+    // comebacks
+    for (const r of (this.after2 || []).filter(r => this.t >= r.at)) {
+      this.after2 = this.after2.filter(x => x !== r);
+      const p = r.p;
+      const bg = m.background;
+      const before = new Set(Object.keys(m.character));
+      const aiBefore = m.AIscript.length;
+      m.create_characters([{ name: '', controller: { type: 'AIscript', id: this.aiId }, id: p.id, team: PLAYER_TEAM,
+        pos: { x: Math.max(10, bg.camerax + rand(20, 120)), y: 0, z: rand(bg.zboundary[0], bg.zboundary[1]) },
+        spec: { dir: 'right', health: { hp: p.s.hp || 100, hp_bound: p.s.hp || 100 } } }], { pane: false });
+      const uid = Object.keys(m.character).find(k => !before.has(k));
+      if (!uid) continue;
+      p.uid = uid; p.ch = m.character[uid]; p.ch.stage_entered = true;
+      p.ai = m.AIscript.slice(aiBefore);
+      p.reserve--; p.deadAt = 0; p.removing = false;
+    }
   }
 
   dropItem(s) {
@@ -169,10 +244,26 @@ class StageRunner {
     return this.entries.some(e => e.s.boss && ((e.ch && e.ch.health.hp > 0) || e.lives > 0));
   }
 
+  // Characters are replaced when they transform (Louis EX, Firzen fusion): follow the new ones.
+  refreshHumans() {
+    const m = this.runner.match;
+    for (const uid in this.humans) {
+      const now = m.character[uid];
+      const old = this.humans[uid];
+      if (now && now !== old) {
+        now.stage_player = true;
+        now.member_id = old.member_id;
+        this.humans[uid] = now;
+      }
+    }
+  }
+
   // Advance the stage logic by one frame (after the match frame).
   director() {
     const m = this.runner.match;
+    this.refreshHumans();
     this.t++;
+    if (!this.after) this.updatePrisoners();
     if (this.after) {
       if (this.t >= this.after.at) { const fn = this.after.fn; this.after = null; fn(); }
       return;

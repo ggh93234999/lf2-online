@@ -78,8 +78,13 @@ npm run import-lf2 -- "C:\Games\LF2"     # 資料夾裡要有 data\ 和 sprite\
 - 牛奶和啤酒：拿著按攻擊就會喝。牛奶慢慢回 HP、暗紅血上限和 MP，啤酒回 MP，喝完空瓶會丟到地上。
 - Julian 的骷髏、Firzen 的天災／火山、Jan 的天使／惡魔、Bat 的蝙蝠這類「召喚追蹤物」是自己補做的。
 - 上面兩項的數值（回復量、召喚數量、追蹤速度）和闖關的人數算法，參考 [Little Fighter Wemake](https://github.com/gimhol/Little-Fighter-Wemake) 整理的規則；那是推算的結果，不是官方文件。
-- 關卡裡的囚犯（criminal）沒有實作。
+- Louis 在 HP 剩 1/3 以下時可以用防跳攻變身成 Louis EX（盔甲會飛出去）。
+- Firen 和 Freeze 同隊、HP 都在 1/3 以下、面對面跑步撞在一起會合體成 Firzen；Firzen 按防跳攻可以拆回兩個人。
+- Louis、Knight、Julian 有護甲：不會被輕攻擊打到硬直、只受 10% 傷害，護甲被打掉之後要過一下才會恢復；Julian 不會被燒或冰凍。Firzen、Julian 回 MP 速度兩倍。
+- Julian 的分身（防跳攻）會變成電腦控制的分身幫忙打。
+- 闖關中的囚犯：被玩家這邊打到就會加入玩家陣營；被打倒後可以依 `reserve` 次數再回來。囚犯用的是一般角色的圖，不是原版囚衣的圖。
 - 沒有生存模式（Survival）：找到的 stage.dat 裡的生存關是別人改過的版本，不是原版。
+- 沒有 LF2 的 Battle 模式、Championship（1 對 1、2 對 2）模式，也沒有暫停、F 鍵功能。
 - 原版背景音樂沒有放進來（只有音效）。
 - 新匯入的角色有少數動作在 F.LF 引擎裡可能和原版不完全一樣。
 - 你的角色要等按鍵送到伺服器再回來才會動：延遲 50 ms 內幾乎感覺不到，太遠會覺得卡。
@@ -102,7 +107,8 @@ npm run import-lf2 -- "C:\Games\LF2"     # 資料夾裡要有 data\ 和 sprite\
 - `LF/character.js`：幾個在原版資料下會當掉的地方加上保護（沒有 super punch 的角色、被非角色抓住、沒有攻擊者的倒地、丟人時下一格沒有 cpoint）
 - `LF/match.js`：AI 腳本出錯時不會讓整場停掉；資料還沒載入的物件不會讓遊戲當掉
 - `LF/specialattack.js`：補上 hit_Fa 4～14 的召喚與追蹤行為（Julian、Firzen、Jan、Bat 的招式）
-- `LF/character.js`：補上喝牛奶／啤酒（state 17）
+- `LF/character.js`：補上喝牛奶／啤酒（state 17）、Louis 變身（state 9995/9996）、護甲、角色分身、Firzen 防跳攻拆開
+- `LF/match.js`：Firen + Freeze 合體成 Firzen
 
 ## 授權
 

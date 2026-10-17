@@ -253,6 +253,7 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
       $.emit_event('transit')
       $.process_tasks()
       $.emit_event('TU')
+      $.check_fusion()
       $.background.TU()
       $.sound.TU()
       $.show_hp()
@@ -424,7 +425,7 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
         const player_obj = util.select_from($.data.object, { id: player.id })
         var pdata = player_obj.data
         preload_pack_images(player_obj)
-        if (option.replace) {
+        if (option.replace && player.controller.child) {
           player.controller.child.length = 0
         }
         const controller = setup_controller(player)
@@ -527,6 +528,9 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
         switch (index) {
           case 'is_npc':
             char.is_npc = spec[index]
+            break
+          case 'fusion':
+            char.fusion = spec[index]
             break
           case 'health':
             for (var I in spec[index]) {
@@ -819,6 +823,105 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
         })
         return funcon
       }
+    }
+
+    /*  Firen + Freeze fusion into Firzen (not in the original F.LF).
+        Teammates running into each other face to face, both with HP at 1/3
+        or less, fuse into Firzen. The fused Firzen splits back with D+J+A,
+        sharing HP and MP equally. */
+    const FIREN = 7, FREEZE = 8, FIRZEN = 51
+    match.prototype.check_fusion = function () {
+      const $ = this
+      const chars = Object.values($.character)
+      // keep the hidden partners parked inside the fused Firzen
+      for (const c of chars) {
+        const f = c.fusion
+        if (!f || !f.partner) continue
+        const p = f.partner
+        p.set_pos(c.ps.x, c.ps.y, c.ps.z)
+        p.effect.super = true
+        p.effect.stuck = true
+        p.effect.timein = -1
+      }
+      const firzen = util.select_from($.data.object, { id: FIRZEN })
+      if (!firzen || !firzen.data || firzen.data === 'lazy') return
+      const low = function (c) { return c.health.hp > 0 && c.health.hp <= c.health.hp_full / 3 }
+      for (const a of chars) {
+        if (a.id !== FIREN || a.fused_in || !low(a) || a.state() !== 2) continue
+        for (const b of chars) {
+          if (b.id !== FREEZE || b.fused_in || !low(b) || b.state() !== 2 || b.team !== a.team) continue
+          if (a.ps.dir === b.ps.dir) continue
+          if (Math.abs(a.ps.x - b.ps.x) > 30 || Math.abs(a.ps.z - b.ps.z) > 15) continue
+          $.fuse(a, b)
+          return
+        }
+      }
+    }
+
+    match.prototype.fuse = function (a, b) {
+      const $ = this
+      // the one a person controls becomes Firzen
+      const human = function (c) { return c.con && c.con.type !== 'AIcontroller' && !(c.con instanceof AI.controller) }
+      const main = human(b) && !human(a) ? b : a
+      const partner = main === a ? b : a
+      const H = main.health
+      H.hp = Math.min(H.hp_full, a.health.hp + b.health.hp)
+      H.hp_bound = Math.min(H.hp_full, Math.max(H.hp, a.health.hp_bound, b.health.hp_bound))
+      H.mp = H.mp_full
+      const origin = { id: main.id, partner: partner, panel_pic: null }
+      partner.fused_in = main.uid
+      partner.sp.hide()
+      partner.shadow.hide()
+      partner.health.hp_stored = partner.health.hp
+      partner.health.hp = 0 // out of the fight (also for the game-over check)
+      const firzen = util.select_from($.data.object, { id: FIRZEN })
+      const panel = $.panel && $.panel.find(function (p) { return p.uid === main.uid })
+      if (panel && panel.spic) {
+        origin.panel_pic = panel.spic.imgs ? panel.spic.imgs['0'] : null
+        panel.spic.add_img(firzen.data.bmp.small, '0')
+      }
+      $.sound.play('1/087')
+      $.create_transform_character({
+        name: 'transform',
+        id: FIRZEN,
+        controller: main.con,
+        team: main.team,
+        pos: { x: (a.ps.x + b.ps.x) / 2, y: 0, z: (a.ps.z + b.ps.z) / 2 },
+        spec: { dir: main.ps.dir, health: H, stat: main.stat, fusion: origin, replace_from: main }
+      })
+    }
+
+    match.prototype.split_fusion = function (fz) {
+      const $ = this
+      const f = fz.fusion
+      if (!f || !f.partner) return
+      const p = f.partner
+      const H = fz.health
+      const hp = Math.round(H.hp / 2), mp = Math.round(H.mp / 2)
+      H.hp = hp; H.mp = mp
+      p.health.hp = hp; p.health.mp = mp
+      p.health.hp_bound = Math.max(hp, H.hp_bound / 2); H.hp_bound = Math.max(hp, H.hp_bound / 2)
+      p.fused_in = null
+      p.effect.super = false
+      p.effect.stuck = false
+      p.effect.timein = 0
+      p.dead = false
+      p.sp.show()
+      p.shadow.show()
+      p.set_pos(fz.ps.x - 30 * fz.dirh(), 0, fz.ps.z)
+      p.switch_dir(fz.ps.dir === 'right' ? 'left' : 'right')
+      p.trans.frame(0, 30)
+      const panel = $.panel && $.panel.find(function (q) { return q.uid === fz.uid })
+      if (panel && panel.spic && f.panel_pic) panel.spic.add_img(f.panel_pic, '0')
+      fz.fusion = null
+      $.create_transform_character({
+        name: 'transform',
+        id: f.id,
+        controller: fz.con,
+        team: fz.team,
+        pos: { x: fz.ps.x + 30 * fz.dirh(), y: 0, z: fz.ps.z },
+        spec: { dir: fz.ps.dir, health: H, stat: fz.stat, replace_from: fz }
+      })
     }
 
     match.prototype.get_living_object = function () {

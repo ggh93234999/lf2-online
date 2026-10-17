@@ -14,6 +14,22 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
       return true
     }
 
+    /*  Armor and boss traits (not in the original F.LF), following the notes
+        of Little Fighter Wemake. type 'defend': each hit wears off its bdefend;
+        type 'times': each hit wears off 1. While the armor holds, a hit only
+        deals ARMOR_INJURY_RATIO of its damage and causes no flinch. */
+    const ARMOR = {
+      6: { type: 'times', toughness: 1, resting: 90, fulltime: false, sound: '1/085' }, // Louis
+      37: { type: 'defend', toughness: 60, resting: 18, fulltime: true, sound: '1/085' }, // Knight
+      52: { type: 'defend', toughness: 60, resting: 18, fulltime: true, sound: '1/002', fireproof: true, antifreeze: true } // Julian
+    }
+    const ARMOR_INJURY_RATIO = 0.1
+    const ARMOR_OFF_STATES = [8, 10, 11, 12, 13, 14, 16, 18] // broken defend, caught, injured, falling, frozen, lying, dizzy, burning
+    const ARMOR_PARTTIME_STATES = [0, 1, 2, 4, 5] // standing, walking, running, jumping, dashing
+    const FIRE_EFFECTS = [2, 20, 21, 22, 23]
+    const ICE_EFFECTS = [3, 30]
+    const MP_REGEN_RATIO = { 51: 2, 52: 2 } // Firzen, Julian
+
     const states =
     {
       generic: function (event, K) {
@@ -149,8 +165,14 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
 
             if ($.match.time.t % 3 === 0) {
               if ($.health.mp < $.health.mp_full) {
-                $.health.mp += 1 + Math.floor(($.health.hp_full - ($.health.hp < $.health.hp_full ? $.health.hp : $.health.hp_full)) / 100)
+                $.health.mp += (MP_REGEN_RATIO[$.id] || 1) * (1 + Math.floor(($.health.hp_full - ($.health.hp < $.health.hp_full ? $.health.hp : $.health.hp_full)) / 100))
+                if ($.health.mp > $.health.mp_full) $.health.mp = $.health.mp_full
               }
+            }
+            // armor recovers after a short rest
+            if (ARMOR[$.id] && $.toughness !== undefined && $.toughness < ARMOR[$.id].toughness) {
+              if ($.toughness_rest > 0) $.toughness_rest--
+              else $.toughness = ARMOR[$.id].toughness
             }
             // recovery
             if ($.health.fall > 0) { $.health.fall += GC.recover.fall }
@@ -180,6 +202,10 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
                 // here is where D>A, D>J... etc handled
                 if (K == 'DJA' && $.transform_character && $.transform_character.is_rudolf_transform) {
                   $.id_update('revert_transform')
+                }
+                if (K == 'DJA' && $.fusion) { // fused Firzen splits back into Firen and Freeze
+                  $.match.split_fusion($)
+                  return 1
                 }
                 var tag = Global.combo_tag[K]
                 if (tag && $.frame.D[tag]) {
@@ -1247,6 +1273,25 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
         }
       },
 
+      9995: function (event, K) // Louis: turn into Louis EX
+      {
+        const $ = this
+        if (event === 'frame') $.id_update('louis_transform')
+      },
+
+      9996: function (event, K) // Louis: armour bursts off
+      {
+        const $ = this
+        if (event !== 'frame') return
+        const pieces = [217, 218, 217, 218]
+        for (let i = 0; i < pieces.length; i++) {
+          const O = util.select_from($.match.data.object, { id: pieces[i] })
+          if (!O || !O.data) continue
+          const side = i % 2 ? 1 : -1
+          $.match.create_weapon(pieces[i], { x: $.ps.x + side * (20 + i * 10), y: -60 - i * 15, z: $.ps.z + (i < 2 ? -8 : 8) })
+        }
+      },
+
       1700: function (event, K) // heal
       {
         const $ = this
@@ -1263,6 +1308,8 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
         }
       }
     }
+
+    const LOUIS_EX = 50
 
     const id_updates = // nasty fix (es)
     {
@@ -1371,11 +1418,29 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
         const $ = this
         switch (event) {
           case 'generic_combo':
-            if (tag === 'hit_ja') // FIX ME: disable transform
-            {
-              return 1
+            // turning into Louis EX (D+J+A) is only allowed with HP at 1/3 or less
+            if (tag === 'hit_ja') {
+              const ex = util.select_from($.match.data.object, { id: LOUIS_EX })
+              if ($.health.hp > $.health.hp_full / 3 || !ex || !ex.data || ex.data === 'lazy') {
+                return 1
+              }
             }
             break
+          case 'louis_transform': {
+            const ex = util.select_from($.match.data.object, { id: LOUIS_EX })
+            if (!ex || !ex.data || ex.data === 'lazy') break
+            const panel = $.match.panel && $.match.panel.find(function (p) { return p.uid === $.uid })
+            if (panel && panel.spic) panel.spic.add_img(ex.data.bmp.small, '0')
+            $.match.create_transform_character({
+              name: 'transform',
+              id: LOUIS_EX,
+              controller: $.con,
+              team: $.team,
+              pos: { x: $.ps.x, y: $.ps.y, z: $.ps.z },
+              spec: { dir: $.ps.dir, health: $.health, stat: $.stat, replace_from: $ }
+            })
+            break
+          }
         }
       },
       10: function (event)
@@ -1617,6 +1682,23 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
       const $ = this
       if (!$.itr_vrest_test(att.uid)) { return false }
 
+      const armor = ARMOR[$.id]
+      if (armor && ITR.effect !== undefined) {
+        // fireproof / antifreeze: the hit lands but does not burn or freeze
+        if ((armor.fireproof && FIRE_EFFECTS.indexOf(ITR.effect) !== -1) ||
+          (armor.antifreeze && ICE_EFFECTS.indexOf(ITR.effect) !== -1)) {
+          ITR = Object.assign({}, ITR, { effect: 0 })
+        }
+      }
+      if (armor && ITR.kind === 0 && $.armor_holds(armor, ITR)) {
+        const inj = Math.round((ITR.injury || 0) * ARMOR_INJURY_RATIO)
+        $.itr_vrest_update(att.uid, ITR)
+        $.itr.attacker = att
+        $.injury(inj)
+        $.match.sound.play(armor.sound)
+        return inj || true
+      }
+
       let accepthit = false
       let defended = false
       let ef_dvx = 0; let ef_dvy = 0; let inj = 0
@@ -1808,6 +1890,21 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
       $.injury(inj)
       if (accepthit) { return inj } else { return false }
     }
+    // Armor wears down with each hit; while it holds the character does not flinch.
+    character.prototype.armor_holds = function (armor, ITR) {
+      const $ = this
+      const st = $.state()
+      if (ARMOR_OFF_STATES.indexOf(st) !== -1) return false
+      if (!armor.fulltime && ARMOR_PARTTIME_STATES.indexOf(st) === -1) return false
+      if ($.toughness === undefined) $.toughness = armor.toughness
+      const dec = armor.type === 'times' ? 1 : (ITR.bdefend || 0)
+      const full = $.toughness >= armor.toughness
+      const before = $.toughness
+      $.toughness -= dec
+      $.toughness_rest = armor.resting
+      return full || before >= dec
+    }
+
     character.prototype.injury = function (inj) {
       const $ = this
       $.health.hp -= inj
@@ -2024,45 +2121,44 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
     character.prototype.opoint = function () {
       const $ = this
       if ($.frame.D.opoint) {
-        if ($.frame.D.opoint.oid === 5) { // create characters
-          let players = [];
-          const number_of_character = Math.floor(Math.abs($.frame.D.opoint.facing) / 10);
-          for (let i = 0; i < number_of_character; i++) {
-            players.push({
-              name: '+man',
-              controller: { type: 'AIscript', id: 4 },
-              type: 'computer',
-              id: $.id,
-              team: $.team,
-              pos: {x: $.ps.x + 20*(-1*i), y: $.ps.y, z: $.ps.z},
-              spec: {
-                is_npc: true,
-                health: {
-                  hp: 20,
-                  hp_full: 20,
-                  hp_bound: 20,
-                  mp: 100,
-                  mp_full: 100,
-                },
-                parent: $,
-              },
-              
-            });
-          }
-          if (players.length > 0) {
-            $.match.create_non_player_characters(players);
-          }
-          return;
-        }
         const ops = Futil.make_array($.frame.D.opoint)
         for (const i in ops) {
-          if (Math.abs(ops[i].facing) > 10) {
+          const O = util.select_from($.match.data.object, { id: ops[i].oid })
+          if (O && O.type === 'character') { // clones: Rudolf's D^J, Julian's DJA
+            $.create_clones(ops[i], O)
+          } else if (Math.abs(ops[i].facing) > 10) {
             $.match.create_multiple_objects(ops[i], $, Math.floor(ops[i].facing / 10), ops[i].dvz || 3)
           } else {
             $.match.create_object(ops[i], $)
           }
         }
       }
+    }
+
+    // computer-controlled copies that fight on my side and vanish when beaten
+    const CLONE_HEALTH = { 52: { hp: 20, mp: 150 } } // Julian (value from Little Fighter Wemake)
+    character.prototype.create_clones = function (op, O) {
+      const $ = this
+      if (!O.data || O.data === 'lazy') return
+      const number = Math.max(1, Math.floor(Math.abs(op.facing) / 10))
+      const health = CLONE_HEALTH[O.id] || { hp: 20, mp: 100 }
+      const players = []
+      for (let i = 0; i < number; i++) {
+        players.push({
+          name: '+man',
+          controller: { type: 'AIscript', id: 4 },
+          type: 'computer',
+          id: O.id,
+          team: $.team,
+          pos: { x: $.ps.x + 20 * (-1 * i), y: $.ps.y, z: $.ps.z },
+          spec: {
+            is_npc: true,
+            health: { hp: health.hp, hp_full: health.hp, hp_bound: health.hp, mp: health.mp, mp_full: health.mp },
+            parent: $
+          }
+        })
+      }
+      $.match.create_non_player_characters(players)
     }
 
     character.prototype.hold_weapon = function (wea) {

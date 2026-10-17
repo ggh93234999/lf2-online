@@ -39,10 +39,19 @@ class MatchRunner {
 
   start() {
     this.match.create(this.setup);
+    // load every AI script: clones and stage enemies may need any of them
+    // and the transformation targets (Louis EX, fused Firzen) with their objects
+    let aiReady = false;
+    // (209: the ice ball the engine itself spawns when ice meets another projectile)
+    const forms = [50, 51, 209].flatMap(id => {
+      const o = this.E.pack.data.object.find(x => x.id === id);
+      return o ? [id, ...(o.pack || []).map(p => p.id)] : [];
+    });
+    this.match.data.load({ AI: this.E.pack.data.AI.map(a => a.id), object: forms }, () => { aiReady = true; });
     return new Promise((resolve, reject) => {
       const t0 = Date.now();
       const poll = () => {
-        if (this.match.time) return resolve();
+        if (this.match.time && aiReady) return resolve();
         if (Date.now() - t0 > 15000) return reject(new Error('match failed to start'));
         setTimeout(poll, 20);
       };
