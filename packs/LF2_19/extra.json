@@ -1,0 +1,176 @@
+[
+ {
+  "id": 52,
+  "type": "character",
+  "file": "data/julian.js",
+  "name": "Julian",
+  "pic": "sprite/julian_f.png"
+ },
+ {
+  "id": 51,
+  "type": "character",
+  "file": "data/firzen.js",
+  "name": "Firzen",
+  "pic": "sprite/firzen_f.png"
+ },
+ {
+  "id": 50,
+  "type": "character",
+  "file": "data/louisEX.js",
+  "name": "LouisEX",
+  "pic": "sprite/louisEX_f.png"
+ },
+ {
+  "id": 38,
+  "type": "character",
+  "file": "data/bat.js",
+  "name": "Bat",
+  "pic": "sprite/bat_f.png"
+ },
+ {
+  "id": 39,
+  "type": "character",
+  "file": "data/justin.js",
+  "name": "Justin",
+  "pic": "sprite/justin_f.png"
+ },
+ {
+  "id": 37,
+  "type": "character",
+  "file": "data/knight.js",
+  "name": "Knight",
+  "pic": "sprite/knight_f.png"
+ },
+ {
+  "id": 36,
+  "type": "character",
+  "file": "data/jan.js",
+  "name": "Jan",
+  "pic": "sprite/jan_f.png"
+ },
+ {
+  "id": 35,
+  "type": "character",
+  "file": "data/monk.js",
+  "name": "Monk",
+  "pic": "sprite/monk_f.png"
+ },
+ {
+  "id": 34,
+  "type": "character",
+  "file": "data/sorcerer.js",
+  "name": "Sorcerer",
+  "pic": "sprite/sorcerer_f.png"
+ },
+ {
+  "id": 33,
+  "type": "character",
+  "file": "data/jack.js",
+  "name": "Jack",
+  "pic": "sprite/jack_f.png"
+ },
+ {
+  "id": 32,
+  "type": "character",
+  "file": "data/mark.js",
+  "name": "Mark",
+  "pic": "sprite/mark_f.png"
+ },
+ {
+  "id": 31,
+  "type": "character",
+  "file": "data/hunter.js",
+  "name": "Hunter",
+  "pic": "sprite/hunter_f.png"
+ },
+ {
+  "id": 120,
+  "type": "lightweapon",
+  "file": "data/weapon4.js"
+ },
+ {
+  "id": 121,
+  "type": "lightweapon",
+  "file": "data/weapon5.js"
+ },
+ {
+  "id": 122,
+  "type": "lightweapon",
+  "file": "data/weapon6.js"
+ },
+ {
+  "id": 123,
+  "type": "lightweapon",
+  "file": "data/weapon8.js"
+ },
+ {
+  "id": 124,
+  "type": "lightweapon",
+  "file": "data/weapon9.js"
+ },
+ {
+  "id": 217,
+  "type": "heavyweapon",
+  "file": "data/weapon10.js"
+ },
+ {
+  "id": 218,
+  "type": "heavyweapon",
+  "file": "data/weapon11.js"
+ },
+ {
+  "id": 216,
+  "type": "specialattack",
+  "file": "data/jack_ball.js"
+ },
+ {
+  "id": 219,
+  "type": "specialattack",
+  "file": "data/jan_chaseh.js"
+ },
+ {
+  "id": 220,
+  "type": "specialattack",
+  "file": "data/jan_chase.js"
+ },
+ {
+  "id": 221,
+  "type": "specialattack",
+  "file": "data/firzen_chasef.js"
+ },
+ {
+  "id": 222,
+  "type": "specialattack",
+  "file": "data/firzen_chasei.js"
+ },
+ {
+  "id": 223,
+  "type": "specialattack",
+  "file": "data/firzen_ball.js"
+ },
+ {
+  "id": 224,
+  "type": "specialattack",
+  "file": "data/bat_ball.js"
+ },
+ {
+  "id": 225,
+  "type": "specialattack",
+  "file": "data/bat_chase.js"
+ },
+ {
+  "id": 226,
+  "type": "specialattack",
+  "file": "data/justin_ball.js"
+ },
+ {
+  "id": 228,
+  "type": "specialattack",
+  "file": "data/julian_ball.js"
+ },
+ {
+  "id": 229,
+  "type": "specialattack",
+  "file": "data/julian_ball2.js"
+ }
+]

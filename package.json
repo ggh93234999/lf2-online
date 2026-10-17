@@ -1,0 +1,17 @@
+{
+  "name": "lf2-online",
+  "version": "1.0.0",
+  "description": "Little Fighter 2 網頁連線版（F.LF 引擎、伺服器同步、闖關模式）",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "import-lf2": "node tools/convert-lf2.js"
+  },
+  "license": "GPL-3.0",
+  "dependencies": {
+    "pngjs": "^7.0.0",
+    "requirejs": "^2.3.8",
+    "ws": "^8.22.0"
+  },
+  "private": true
+}

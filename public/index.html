@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LF2 連線版</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="794" height="550"></canvas>
+
+  <div id="overlay">
+    <div id="panel-join" class="panel">
+      <h1>Little Fighter 2 連線版</h1>
+      <p class="sub">原版角色 · 伺服器同步 · 最多 8 個角色</p>
+      <label>暱稱<input id="name" maxlength="12" placeholder="你的名字"></label>
+      <label>房間代碼<input id="roomInput" maxlength="6" placeholder="留空 = 開新房間"></label>
+      <button id="btnJoin" class="primary">進入房間</button>
+      <p id="joinErr" class="err"></p>
+    </div>
+
+    <div id="panel-room" class="panel hidden">
+      <div class="room-head">
+        <span>房間 <b id="roomCode"></b></span>
+        <button id="btnCopy">複製邀請連結</button>
+      </div>
+      <div id="slots"></div>
+      <h3>選擇角色</h3>
+      <div id="chars"></div>
+      <h3>隊伍 <small>（同隊不會互打；全部「無」就是混戰）</small></h3>
+      <div id="teams"></div>
+      <div id="hostSettings">
+        <h3>模式</h3>
+        <div id="modes">
+          <button data-mode="vs">對戰模式</button>
+          <button data-mode="stage">闖關模式</button>
+        </div>
+        <div id="vsOpts"><h3>場地</h3><select id="bgSelect"></select></div>
+        <div id="stageOpts"><h3>從哪一關開始</h3><select id="stageSelect"></select>
+          <p class="note">闖關模式裡所有玩家（含電腦隊友）同一隊，對抗原版關卡的敵人。</p></div>
+      </div>
+      <div id="hostCtl">
+        <button id="btnBot">＋ 加入電腦</button>
+        <button id="btnStart" class="primary">開始對戰</button>
+      </div>
+      <p id="waitMsg">等待房主開始…</p>
+      <p id="roomErr" class="err"></p>
+    </div>
+
+    <details class="help" open>
+      <summary>操作方式</summary>
+      <table>
+        <tr><td>移動</td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或 方向鍵</td></tr>
+        <tr><td>攻擊</td><td><kbd>J</kbd> 或 <kbd>Z</kbd></td></tr>
+        <tr><td>跳</td><td><kbd>K</kbd> 或 <kbd>X</kbd></td></tr>
+        <tr><td>防禦</td><td><kbd>L</kbd> 或 <kbd>C</kbd></td></tr>
+        <tr><td>跑步</td><td>連按兩下 ← 或 →</td></tr>
+        <tr><td>招式</td><td>和原版一樣，例如 防→攻（D&gt;A）、防↑跳（D^J）</td></tr>
+      </table>
+    </details>
+  </div>
+
+  <div id="summary" class="hidden">
+    <h2><span id="sumTitle">對戰結果</span> <small id="sumTime"></small></h2>
+    <table>
+      <thead><tr><th></th><th>玩家</th><th>擊倒</th><th>攻擊</th><th>損失 HP</th><th>使用 MP</th><th>撿物</th><th>結果</th></tr></thead>
+      <tbody id="sumBody"></tbody>
+    </table>
+    <p id="sumNote">稍後自動回到大廳</p>
+  </div>
+
+  <div id="banner" class="hidden"></div>
+  <div id="goArrow" class="hidden">GO →</div>
+
+  <div id="ingame-bar" class="hidden">
+    <span id="whoami"></span>
+    <span id="pingText"></span>
+    <button id="btnSound">🔊</button>
+    <button id="btnStop" class="hidden">結束這局（房主）</button>
+  </div>
+</div>
+<script src="/engine/third_party/require.js"></script>
+<script src="client.js"></script>
+</body>
+</html>
