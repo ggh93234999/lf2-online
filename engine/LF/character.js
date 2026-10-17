@@ -5,6 +5,15 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
   function (livingobject, Global, Fcombodec, Futil, util) {
     const GC = Global.gameplay
 
+    // whether a bottle (drink spec + amounts already drunk) has nothing left
+    function drink_empty(d, used) {
+      if (!used) return false
+      for (const key of ['hp', 'hp_bound', 'mp']) {
+        if (d[key] && used[key] < d[key][0]) return false
+      }
+      return true
+    }
+
     const states =
     {
       generic: function (event, K) {
@@ -262,7 +271,8 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
               case 'att':
                 if ($.hold.obj) {
                   var dx = $.con.state.left !== $.con.state.right
-                  if (!dx && $.proper($.hold.obj.id, 'drink') && $.data.frame[55]) {
+                  const drink = $.proper($.hold.obj.id, 'drink')
+                  if (!dx && drink && !drink_empty(drink, $.hold.obj.drink_used) && $.data.frame[55]) {
                     $.trans.frame(55, 10) // drink milk / beer
                     return 1
                   }
@@ -1106,24 +1116,21 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
               $.trans.frame(999, 10)
               break
             }
-            if (!w.drink_left) w.drink_left = { hp: d.hp, mp: d.mp }
-            const L = w.drink_left
-            if ($.match.time.t % 2 === 0) {
-              if (L.hp > 0) {
-                const a = Math.min(d.hp_rate || 2, L.hp)
-                L.hp -= a
-                $.health.hp = Math.min($.health.hp_full, $.health.hp + a)
-                $.health.hp_bound = Math.max($.health.hp_bound, $.health.hp)
-              }
-              if (L.mp > 0) {
-                const a = Math.min(d.mp_rate || 4, L.mp)
-                L.mp -= a
-                $.health.mp = Math.min($.health.mp_full, $.health.mp + a)
-              }
+            const used = w.drink_used || (w.drink_used = { hp: 0, hp_bound: 0, mp: 0, t: 0 })
+            used.t++
+            const H = $.health
+            const sip = function (key, apply) {
+              const spec = d[key]
+              if (!spec || used[key] >= spec[0] || used.t % spec[2] !== 0) return
+              const amount = Math.min(spec[1], spec[0] - used[key])
+              used[key] += amount
+              apply(amount)
             }
-            if (L.hp <= 0 && L.mp <= 0) { // empty: the bottle breaks
-              $.drop_weapon(0, 0)
-              w.health.hp = 0
+            sip('hp', function (a) { H.hp = Math.min(H.hp_full, H.hp + a); H.hp_bound = Math.max(H.hp_bound, H.hp) })
+            sip('hp_bound', function (a) { H.hp_bound = Math.min(H.hp_full, H.hp_bound + a) })
+            sip('mp', function (a) { H.mp = Math.min(H.mp_full, H.mp + a) })
+            if (drink_empty(d, used)) { // empty: toss the bottle away
+              $.drop_weapon(($.match.random() - 0.5) * 6, -6)
               $.trans.frame(999, 10)
             }
             break

@@ -105,14 +105,16 @@ class StageRunner {
     const ph = this.stage.phases[this.phaseIndex];
     m.background.camera_right = ph.bound;
     m.background.player_bound = ph.bound;
-    const n = Math.max(1, this.members.length);
+    // enemy counts scale with the players still standing (as in LF2)
+    const n = Math.max(1, Object.values(this.humans).filter(h => h.health.hp > 0).length);
     this.entries = [];
     for (const s of ph.spawns) {
       if (s.id >= 100 && s.id < 200) { this.dropItem(s); continue; }
       if (s.id >= 200 && s.id !== 1000 && s.id !== 3000) continue; // criminal etc. are not simulated
-      const count = s.ratio !== undefined ? Math.round(s.ratio * n) : 1;
+      const count = s.ratio !== undefined ? Math.floor(Math.round(s.ratio * n * 1e6) / 1e6) : 1;
       for (let k = 0; k < count; k++) {
-        this.entries.push({ s, lives: s.times || 1, ch: null, uid: null, ai: [], deadAt: 0, respawnAt: this.t + k * 8 });
+        // soldiers without a count come back up to 50 times while a boss lives
+        this.entries.push({ s, lives: s.times || (s.soldier ? 50 : 1), ch: null, uid: null, ai: [], deadAt: 0, respawnAt: this.t + k * 8 });
       }
     }
     this.hadBoss = this.entries.some(e => e.s.boss);
@@ -196,11 +198,10 @@ class StageRunner {
         if (!m.character[e.uid]) this.removeEntryChar(e);
         continue;
       }
-      const canMore = e.lives > 0 || (e.s.soldier && bossUp);
+      const canMore = e.lives > 0 && (!e.s.soldier || bossUp || !this.hadBoss);
       if (!canMore) { e.lives = 0; continue; }
       if (e.respawnAt === null) e.respawnAt = this.t + rand(30, 90);
       if (this.t >= e.respawnAt) {
-        if (e.lives <= 0) e.lives = 1; // soldiers keep coming while a boss lives
         this.spawn(e);
         e.respawnAt = null;
       }

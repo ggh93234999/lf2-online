@@ -75,8 +75,9 @@ npm run import-lf2 -- "C:\Games\LF2"     # 資料夾裡要有 data\ 和 sprite\
 
 ## 目前的限制
 
-- 牛奶和啤酒：拿著按攻擊就會喝，牛奶回 HP 和 MP、啤酒回 MP，喝完瓶子會破掉（回復量是近似原版的數值）。
-- Julian 的骷髏、Firzen 的天災／火山、Jan 的天使／惡魔、Bat 的蝙蝠這類「召喚追蹤物」是自己補做的，數量和速度是近似原版。
+- 牛奶和啤酒：拿著按攻擊就會喝。牛奶慢慢回 HP、暗紅血上限和 MP，啤酒回 MP，喝完空瓶會丟到地上。
+- Julian 的骷髏、Firzen 的天災／火山、Jan 的天使／惡魔、Bat 的蝙蝠這類「召喚追蹤物」是自己補做的。
+- 上面兩項的數值（回復量、召喚數量、追蹤速度）和闖關的人數算法，參考 [Little Fighter Wemake](https://github.com/gimhol/Little-Fighter-Wemake) 整理的規則；那是推算的結果，不是官方文件。
 - 關卡裡的囚犯（criminal）沒有實作。
 - 沒有生存模式（Survival）：找到的 stage.dat 裡的生存關是別人改過的版本，不是原版。
 - 原版背景音樂沒有放進來（只有音效）。

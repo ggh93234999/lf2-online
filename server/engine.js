@@ -110,15 +110,16 @@ function addOpointDependencies(pack) {
 }
 
 // How the imported items behave when held (F.LF's data/properties.js only covers its own items).
-// Drink amounts are approximations of the original.
 function addItemProperties(pack) {
   const spec = pack.data.properties.data;
   const throwable = { mass: 0.3, run_throw: true, jump_throw: true, dash_throw: false, stand_throw: false, just_throw: false };
   const add = (id, props) => { if (!spec[id]) spec[id] = Object.assign({}, throwable, props); };
   add(120, { attackable: true });                        // knife
   add(121, { just_throw: true });                        // baseball
-  add(122, { drink: { hp: 100, mp: 100, hp_rate: 2, mp_rate: 2 } }); // milk
-  add(123, { drink: { hp: 0, mp: 200, mp_rate: 4 } });   // beer
+  // drink: [total, amount per step, frames per step] for HP, dark-red HP cap and MP
+  // (values from Little Fighter Wemake's reconstruction of the original)
+  add(122, { drink: { hp: [160, 4, 5], hp_bound: [80, 2, 5], mp: [166, 5, 6] } }); // milk
+  add(123, { drink: { mp: [750, 12, 1] } });             // beer
   add(124, { attackable: true, stand_throw: true });     // boomerang
 }
 
